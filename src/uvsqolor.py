@@ -61,13 +61,22 @@ def correction_gamma(facteur):
     for i in range(matrice.shape[0]):
         for j in range(matrice.shape[1]):
             for c in range(3):  # canal 0=R, 1=G, 2=B
-                vin = matrice_float[i, j, c] / max_value
-                vout = pow(vin, float(gamma))
-                matrice_float[i, j, c] = max_value * vout
+                val_in = matrice_float[i, j, c] / max_value
+                val_out = pow(val_in, float(gamma))
+                matrice_float[i, j, c] = max_value * val_out
 
     matrice = matrice_float.clip(0, max_value).astype(np.uint8)
     rafraichir()
 
+def correction_sigmoïde():
+    k=float(k)
+    matrice_float= matrice_2.astype(np.float32)
+    max_value= float(np.iinfo(matrice.dtype).max)
+    for i in range(matrice.shape[0]):
+        for j in range(matrice.shape[1]):
+            for c in range(3):
+            val_in= matrice_float[i,j,c]/max_value
+            val_out= 1/(1+np.exp(-k*val_in*(val_in-0.5)))
 
 
 # Callbacks
@@ -115,6 +124,9 @@ def cb_lumi():
     bouton_annuler = tk.Button(frame_boutons, text="Annuler",
                                command=annule_effet)
     bouton_annuler.pack(side=tk.LEFT, padx=10)
+
+def cb_contraste():
+    """créer les slider de contraste(k)"""
 
 # Création de la fenêtre principale
 fenetre_principale=tk.Tk()
