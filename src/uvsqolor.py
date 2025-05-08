@@ -1,18 +1,19 @@
 import numpy as np
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog,messagebox
 from PIL import Image
 from PIL import ImageTk 
+from scipy.signal import convolve2d
 
 # Définition des variables globales
 nom_fichier=None
 photo=None
 canvas=None
 matrice=None
-
+historique = [matrice]
 
 # Gestion de l'affichage
-def rafraichir():
+def rafraichir(ajouter_historique=True):
     global photo, matrice
     image = Image.fromarray(matrice)
     photo = ImageTk.PhotoImage(image)
@@ -22,11 +23,14 @@ def rafraichir():
     canvas.create_image(0, 0, anchor=tk.NW, image=photo)
     canvas.image = photo
 
+    if ajouter_historique:
+        historique.append(matrice.copy())
+
 
 def applique_effet():
     global matrice_2
     matrice_2 = matrice.copy()
-    rafraichir()
+    rafraichir(ajouter_historique=True)
     dialogue_effet.destroy()
 
 def annule_effet():
@@ -34,6 +38,15 @@ def annule_effet():
     matrice = matrice_2.copy()
     rafraichir()
     dialogue_effet.destroy()
+
+def undo_effet():
+    global matrice, historique
+    if len(historique) > 1:
+        historique.pop()
+        matrice = historique[-1].copy()
+        rafraichir(ajouter_historique=False)
+    else:
+        messagebox.showinfo("Info", "Aucun effet à annuler")
 
 # Algorithmes de filtre
 def filtre_vert():
@@ -66,7 +79,7 @@ def correction_gamma(facteur):
                 matrice_float[i, j, c] = max_value * val_out
 
     matrice = matrice_float.clip(0, max_value).astype(np.uint8)
-    rafraichir()
+    rafraichir(ajouter_historique=True)
 
 def correction_sigmoide(c,k):
     global matrice, matrice_2
@@ -78,12 +91,19 @@ def correction_sigmoide(c,k):
         for j in range(matrice.shape[1]):
             for d in range(3):
                 val_in= matrice_float[i,j,d]/max_value
-                val_out= 1/(1+np.exp(-k*val_in*(val_in-0.5)))
+                val_out= 1/(1+np.exp(-k*(val_in-0.5)*c))
                 matrice_float[i,j,d]=val_out*max_value
     matrice = matrice_float.clip(0, max_value).astype(np.uint8)
-    rafraichir()
+    rafraichir(ajouter_historique=True)
 
+def convoleve2d(matrice, kernel, mode='same',boundary='symm'):
+            for i in range(3):
+                image_2d = matrice[:, :, i]
+                image_flou = convolve2d(image_2d, kernel, mode=mode, boundary=boundary)
+                image_flou = np.clip(image_flou, 0, 255).astype(np.uint8)
+                matrice[:, :, i] = image_flou
 
+                
 # Callbacks
 def cb_ouvrir():
     global nom_fichier, photo, canvas, matrice,matrice_2
@@ -96,16 +116,20 @@ def cb_ouvrir():
         menu_effets.entryconfig("Gris",state=tk.NORMAL)
         menu_effets.entryconfig("luminosité",state=tk.NORMAL)
         menu_effets.entryconfig("Contraste",state=tk.NORMAL)
+        menu_effets.entryconfig("Flou",state=tk.NORMAL)
+        menu_effets.entryconfig("Annuler",state=tk.NORMAL)
+        historique.clear()
+        historique.append(matrice.copy())
         rafraichir()
         
         
 def cb_vert():
     filtre_vert()
-    rafraichir()
+    rafraichir(ajouter_historique=True)
 
 def cb_gris():
     filtre_gris()
-    rafraichir()
+    rafraichir(ajouter_historique=True)
 
 def cb_lumi():
     global dialogue_effet
@@ -132,7 +156,7 @@ def cb_lumi():
     bouton_annuler.pack(side=tk.LEFT, padx=10)
 
 def cb_contraste():
-    """créer les slider de contraste(k)"""
+    """créer les slider de contraste et de pente"""
     global dialogue_effet
     dialogue_effet = tk.Toplevel(fenetre_principale)
     dialogue_effet.title("Contraste")
@@ -166,6 +190,12 @@ def cb_contraste():
     bouton_annuler.pack(side=tk.LEFT, padx=10)
 
 
+def cb_flou():
+    kernel = np.ones((3, 3)) / 9
+    convoleve2d(matrice,kernel)
+
+    rafraichir(ajouter_historique=True)
+
 # Création de la fenêtre principale
 fenetre_principale=tk.Tk()
 fenetre_principale.title('UVSQolor')
@@ -185,5 +215,7 @@ menu_effets.add_command(label='Vert',command=cb_vert,state=tk.DISABLED)
 menu_effets.add_command(label="Gris", command= cb_gris,state=tk.DISABLED)
 menu_effets.add_command(label="luminosité", command= cb_lumi,state= tk.DISABLED)
 menu_effets.add_command(label="Contraste", command= cb_contraste,state= tk.DISABLED)
+menu_effets.add_command(label="Flou", command= cb_flou,state= tk.DISABLED)
+menu_effets.add_command(label="Annuler",command=undo_effet,state=tk.DISABLED)
 
 fenetre_principale.mainloop()
