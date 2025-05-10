@@ -97,12 +97,18 @@ def correction_sigmoide(c,k):
     rafraichir(ajouter_historique=True)
 
 def convoleve2d(matrice, kernel, mode='same',boundary='symm'):
-            for i in range(3):
-                image_2d = matrice[:, :, i]
-                image_flou = convolve2d(image_2d, kernel, mode=mode, boundary=boundary)
-                image_flou = np.clip(image_flou, 0, 255).astype(np.uint8)
-                matrice[:, :, i] = image_flou
+    for i in range(3):
+        image_2d = matrice[:, :, i]
+        image_flou = convolve2d(image_2d, kernel, mode=mode, boundary=boundary)
+        image_flou = np.clip(image_flou, 0, 255).astype(np.uint8)
+        matrice[:, :, i] = image_flou
 
+def flou_gaussien(matrice,kernel,mode='same',boundary='symm'):
+    for i in range(3):
+        image_2d = matrice[:, :, i]
+        image_flou = convolve2d(image_2d, kernel, mode=mode, boundary=boundary)
+        image_flou = np.clip(image_flou, 0, 255).astype(np.uint8)
+        matrice[:, :, i] = image_flou
                 
 # Callbacks
 def cb_ouvrir():
@@ -117,6 +123,7 @@ def cb_ouvrir():
         menu_effets.entryconfig("luminosité",state=tk.NORMAL)
         menu_effets.entryconfig("Contraste",state=tk.NORMAL)
         menu_effets.entryconfig("Flou",state=tk.NORMAL)
+        menu_effets.entryconfig("Flou Gaussien",state=tk.NORMAL)
         menu_effets.entryconfig("Annuler",state=tk.NORMAL)
         historique.clear()
         historique.append(matrice.copy())
@@ -196,6 +203,11 @@ def cb_flou():
 
     rafraichir(ajouter_historique=True)
 
+def cb_flou_gauss():
+    kernel= np.array([[1,2,1],[2,4,2],[1,2,1]])/16
+    flou_gaussien(matrice,kernel)
+    rafraichir(ajouter_historique=True)
+
 # Création de la fenêtre principale
 fenetre_principale=tk.Tk()
 fenetre_principale.title('UVSQolor')
@@ -216,6 +228,8 @@ menu_effets.add_command(label="Gris", command= cb_gris,state=tk.DISABLED)
 menu_effets.add_command(label="luminosité", command= cb_lumi,state= tk.DISABLED)
 menu_effets.add_command(label="Contraste", command= cb_contraste,state= tk.DISABLED)
 menu_effets.add_command(label="Flou", command= cb_flou,state= tk.DISABLED)
+menu_effets.add_command(label="Flou Gaussien ",command=flou_gaussien,state=tk.DISABLED)
 menu_effets.add_command(label="Annuler",command=undo_effet,state=tk.DISABLED)
+
 
 fenetre_principale.mainloop()
